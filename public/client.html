@@ -288,8 +288,10 @@
 
         // Late joiner — performance already in progress
         if (state && state.status === 'playing' && state.playAt) {
+          engine.setSong(state.song);
           engine.play(state.playAt).then(showPlaying);
         } else if (state && state.status === 'countdown' && state.playAt) {
+          engine.setSong(state.song);
           showCountdown(state.playAt, state.countdownSec);
           const delayMs = state.playAt - Date.now();
           setTimeout(() => {
@@ -298,24 +300,19 @@
         }
       });
 
-      socket.on('perf:countdown', async ({ playAt, countdownSec }) => {
-        await engine.ensureRunning(); // ensure context is live before countdown ends
+      socket.on('perf:countdown', async ({ playAt, countdownSec, song }) => {
+        engine.setSong(song);
+        await engine.ensureRunning();
         showCountdown(playAt, countdownSec);
         const delayMs = playAt - Date.now();
         setTimeout(() => {
-          // Guard: perf:play may have already triggered play if client clock is
-          // behind server, causing perf:play to arrive before this timeout fires.
-          if (!engine.playing) {
-            engine.play(playAt).then(showPlaying);
-          }
+          if (!engine.playing) engine.play(playAt).then(showPlaying);
         }, Math.max(0, delayMs - 100));
       });
 
-      socket.on('perf:play', ({ playAt }) => {
-        // Fallback: fires after the countdown in case the client missed it.
-        // Also handles the race where client clock is behind server and this
-        // event arrives before the countdown setTimeout.
+      socket.on('perf:play', ({ playAt, song }) => {
         if (!engine.playing) {
+          engine.setSong(song);
           engine.play(playAt).then(showPlaying);
         }
       });

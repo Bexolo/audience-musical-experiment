@@ -75,6 +75,7 @@ const state = {
   status: 'idle', // 'idle' | 'countdown' | 'playing' | 'stopped'
   playAt: null,
   countdownSec: 5,
+  song: 'ode-to-joy',
 };
 
 // ── Static files ─────────────────────────────────────────────────────────────
@@ -122,15 +123,24 @@ io.on('connection', (socket) => {
       sizeLabel: audienceSizeLabel(),
     });
 
+    socket.on('host:select-song', ({ song }) => {
+      const allowed = ['ode-to-joy', 'happy-birthday'];
+      if (!allowed.includes(song)) return;
+      if (state.status === 'playing' || state.status === 'countdown') return;
+      state.song = song;
+      // Confirm selection back to all hosts
+      io.to('hosts').emit('host:song-changed', { song: state.song });
+    });
+
     socket.on('host:play', () => {
       if (state.status === 'playing' || state.status === 'countdown') return;
       state.playAt = Date.now() + state.countdownSec * 1000 + 500;
       state.status = 'countdown';
-      io.emit('perf:countdown', { playAt: state.playAt, countdownSec: state.countdownSec });
+      io.emit('perf:countdown', { playAt: state.playAt, countdownSec: state.countdownSec, song: state.song });
       setTimeout(() => {
         if (state.status === 'countdown') {
           state.status = 'playing';
-          io.emit('perf:play', { playAt: state.playAt });
+          io.emit('perf:play', { playAt: state.playAt, song: state.song });
         }
       }, state.countdownSec * 1000 + 600);
     });

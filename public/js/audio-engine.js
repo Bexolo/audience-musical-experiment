@@ -15,6 +15,7 @@ class AudioEngine {
   constructor() {
     this.ctx = null;
     this.part = 'Soprano';
+    this.songKey = 'ode-to-joy';
     this.offsetMs = 0;   // client - server, from clock-sync
     this.gain = 0.8;
     this.octave = 0;     // frequency multiplier: 2^octave
@@ -38,6 +39,10 @@ class AudioEngine {
 
   setPart(part) {
     this.part = part;
+  }
+
+  setSong(songKey) {
+    this.songKey = songKey || 'ode-to-joy';
   }
 
   setOffsetMs(ms) {
@@ -75,13 +80,18 @@ class AudioEngine {
     const delayMs = clientEquivMs - Date.now();
     const delaySeconds = delayMs / 1000;
 
-    const notes = SONG.parts[this.part];
+    const song = SONGS[this.songKey];
+    if (!song) {
+      console.warn('[audio-engine] Unknown song:', this.songKey);
+      return;
+    }
+    const notes = song.parts[this.part];
     if (!notes) {
-      console.warn('[audio-engine] Unknown part:', this.part);
+      console.warn('[audio-engine] Unknown part:', this.part, 'in song:', this.songKey);
       return;
     }
 
-    const beatDuration = 60 / SONG.bpm;
+    const beatDuration = 60 / song.bpm;
     const octaveMultiplier = Math.pow(2, this.octave);
 
     // If delaySeconds is negative, we joined mid-song — calculate which note

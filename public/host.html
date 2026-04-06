@@ -229,6 +229,23 @@
       color: var(--text);
     }
     .total-label { font-size: 12px; color: var(--muted); }
+
+    /* ── Song picker ── */
+    .song-picker { display: flex; gap: 10px; flex-wrap: wrap; }
+    .song-btn {
+      background: var(--card);
+      border: 2px solid var(--border);
+      color: var(--muted);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .song-btn:hover { border-color: #5a5aff; color: var(--text); }
+    .song-btn.active { border-color: #5a5aff; color: #fff; background: #2a2a50; }
+    .song-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -240,6 +257,15 @@
   </header>
 
   <main>
+    <!-- Song picker -->
+    <div>
+      <div class="section-title">Song</div>
+      <div class="song-picker">
+        <button class="song-btn active" data-song="ode-to-joy">Ode to Joy</button>
+        <button class="song-btn" data-song="happy-birthday">Happy Birthday</button>
+      </div>
+    </div>
+
     <!-- Controls -->
     <div class="controls">
       <button class="btn" id="btn-play">▶ Start Performance</button>
@@ -358,6 +384,25 @@
       });
     }
 
+    // ── Song picker ───────────────────────────────────────────────────────────
+    function setSongActive(song) {
+      document.querySelectorAll('.song-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.song === song);
+      });
+    }
+
+    document.querySelectorAll('.song-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        socket.emit('host:select-song', { song: btn.dataset.song });
+        setSongActive(btn.dataset.song); // optimistic update
+      });
+    });
+
+    socket.on('host:song-changed', ({ song }) => {
+      setSongActive(song);
+    });
+
     // ── Control buttons ───────────────────────────────────────────────────────
     document.getElementById('btn-play').addEventListener('click', () => {
       socket.emit('host:play');
@@ -379,8 +424,11 @@
       const btnPlay  = document.getElementById('btn-play');
       const btnStop  = document.getElementById('btn-stop');
 
-      btnPlay.disabled = (status === 'countdown' || status === 'playing');
+      const busy = (status === 'countdown' || status === 'playing');
+      btnPlay.disabled = busy;
       btnStop.disabled = (status === 'idle' || status === 'stopped');
+      // Disable song selection while a performance is active
+      document.querySelectorAll('.song-btn').forEach(b => { b.disabled = busy; });
     }
 
     function showCountdown(playAt, countdownSec) {
@@ -452,6 +500,7 @@
     socket.on('host:connected', ({ devices, state, gains, sizeLabel }) => {
       renderDevices(devices, gains);
       document.getElementById('size-label').textContent = sizeLabel;
+      setSongActive(state.song || 'ode-to-joy');
       if (state.status !== 'idle') setStatus(state.status, state.status.charAt(0).toUpperCase() + state.status.slice(1));
     });
 
