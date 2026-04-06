@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choir — Conductor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --soprano: #e05c8a;
+      --alto:    #e07a3a;
+      --tenor:   #4a9de0;
+      --bass:    #5ab85a;
+      --bg:      #0d0d14;
+      --card:    #1a1a28;
+      --border:  #2a2a40;
+      --text:    #f0f0f8;
+      --muted:   #7070a0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+    }
+
+    /* ── Header ── */
+    header {
+      grid-column: 1 / -1;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header h1 { font-size: 22px; font-weight: 700; }
+
+    .size-label {
+      background: #2a2a40;
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+
+    .status-pill {
+      margin-left: auto;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      background: #2a2a40;
+      color: var(--muted);
+    }
+    .status-pill.countdown { background: #2a2050; color: #b090ff; }
+    .status-pill.playing   { background: #0a2a0a; color: #5ab85a; }
+    .status-pill.stopped   { background: #2a0a0a; color: #e05c5c; }
+
+    /* ── Main panel ── */
+    main {
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    #btn-play  { background: #5a5aff; color: #fff; }
+    #btn-stop  { background: #e05c5c; color: #fff; }
+    #btn-reset { background: var(--border); color: var(--muted); }
+
+    /* Countdown display */
+    #countdown-big {
+      font-size: 120px;
+      font-weight: 900;
+      line-height: 1;
+      text-align: center;
+      letter-spacing: -6px;
+      color: #b090ff;
+      opacity: 0;
+      transition: opacity 0.2s;
+      min-height: 0;
+    }
+    #countdown-big.visible { opacity: 1; }
+
+    /* Part summary cards */
+    .part-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .part-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .part-card .part-name { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+    .part-card .part-count { font-size: 36px; font-weight: 900; }
+    .part-card .part-gain { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .part-card[data-part="Soprano"] .part-name { color: var(--soprano); }
+    .part-card[data-part="Alto"]    .part-name { color: var(--alto); }
+    .part-card[data-part="Tenor"]   .part-name { color: var(--tenor); }
+    .part-card[data-part="Bass"]    .part-name { color: var(--bass); }
+
+    /* Gain sliders */
+    .gain-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .gain-row label { font-size: 12px; color: var(--muted); width: 60px; }
+    .gain-row input[type=range] { flex: 1; accent-color: #5a5aff; }
+    .gain-row .gain-val { font-size: 12px; color: var(--muted); width: 36px; text-align: right; }
+
+    /* Device table */
+    .section-title {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .device-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .device-table th {
+      text-align: left;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      padding: 0 12px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .device-table td {
+      padding: 10px 12px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .device-table tr:last-child td { border-bottom: none; }
+
+    select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .dot-soprano { color: var(--soprano); }
+    .dot-alto    { color: var(--alto); }
+    .dot-tenor   { color: var(--tenor); }
+    .dot-bass    { color: var(--bass); }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 0;
+      font-size: 15px;
+    }
+
+    /* ── Sidebar (QR) ── */
+    aside {
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    aside h2 { font-size: 15px; font-weight: 700; }
+    aside .url { font-size: 12px; color: var(--muted); word-break: break-all; text-align: center; }
+
+    #qr-container {
+      width: 200px;
+      height: 200px;
+      background: #fff;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #qr-container svg { width: 100%; height: 100%; }
+    #qr-container .qr-loading { color: #999; font-size: 12px; }
+
+    .total-devices {
+      font-size: 48px;
+      font-weight: 900;
+      color: var(--text);
+    }
+    .total-label { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Choir Conductor</h1>
+    <span class="size-label" id="size-label">Chamber</span>
+    <span class="status-pill" id="status-pill">Idle</span>
+  </header>
+
+  <main>
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn" id="btn-play">▶ Start Performance</button>
+      <button class="btn" id="btn-stop" disabled>⏹ Stop</button>
+      <button class="btn" id="btn-reset">↺ Reset</button>
+    </div>
+
+    <!-- Countdown big number -->
+    <div id="countdown-big"></div>
+
+    <!-- Part summary -->
+    <div class="part-summary">
+      <div class="part-card" data-part="Soprano">
+        <div class="part-name">Soprano</div>
+        <div class="part-count" id="count-Soprano">0</div>
+        <div class="part-gain" id="gain-Soprano">vol 80%</div>
+      </div>
+      <div class="part-card" data-part="Alto">
+        <div class="part-name">Alto</div>
+        <div class="part-count" id="count-Alto">0</div>
+        <div class="part-gain" id="gain-Alto">vol 80%</div>
+      </div>
+      <div class="part-card" data-part="Tenor">
+        <div class="part-name">Tenor</div>
+        <div class="part-count" id="count-Tenor">0</div>
+        <div class="part-gain" id="gain-Tenor">vol 80%</div>
+      </div>
+      <div class="part-card" data-part="Bass">
+        <div class="part-name">Bass</div>
+        <div class="part-count" id="count-Bass">0</div>
+        <div class="part-gain" id="gain-Bass">vol 80%</div>
+      </div>
+    </div>
+
+    <!-- Per-part gain sliders -->
+    <div>
+      <div class="section-title">Volume per part</div>
+      <div id="gain-sliders">
+        <div class="gain-row">
+          <label>Soprano</label>
+          <input type="range" min="0" max="100" value="80" id="slider-Soprano">
+          <span class="gain-val" id="slider-val-Soprano">80%</span>
+        </div>
+        <div class="gain-row">
+          <label>Alto</label>
+          <input type="range" min="0" max="100" value="80" id="slider-Alto">
+          <span class="gain-val" id="slider-val-Alto">80%</span>
+        </div>
+        <div class="gain-row">
+          <label>Tenor</label>
+          <input type="range" min="0" max="100" value="80" id="slider-Tenor">
+          <span class="gain-val" id="slider-val-Tenor">80%</span>
+        </div>
+        <div class="gain-row">
+          <label>Bass</label>
+          <input type="range" min="0" max="100" value="80" id="slider-Bass">
+          <span class="gain-val" id="slider-val-Bass">80%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Device list -->
+    <div>
+      <div class="section-title">Connected devices (<span id="device-count">0</span>)</div>
+      <table class="device-table">
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>Part</th>
+            <th>Octave</th>
+          </tr>
+        </thead>
+        <tbody id="device-tbody">
+          <tr><td colspan="3" class="empty-state">No devices connected yet.<br>Share the QR code to get started.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <aside>
+    <h2>Scan to Join</h2>
+    <div id="qr-container"><span class="qr-loading">Loading…</span></div>
+    <div class="url" id="client-url"></div>
+    <div class="total-devices" id="total-count">0</div>
+    <div class="total-label">devices connected</div>
+  </aside>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const VOICE_PARTS = ['Soprano', 'Alto', 'Tenor', 'Bass'];
+
+    // ── Socket ────────────────────────────────────────────────────────────────
+    const socket = io({ query: { role: 'host' } });
+
+    let countdownInterval = null;
+    let currentStatus = 'idle';
+
+    // ── QR Code ───────────────────────────────────────────────────────────────
+    fetch('/api/qr')
+      .then(r => r.text())
+      .then(svg => {
+        document.getElementById('qr-container').innerHTML = svg;
+      });
+
+    // Derive client URL from current host URL
+    const clientUrl = `${location.protocol}//${location.hostname}:${location.port}/`;
+    document.getElementById('client-url').textContent = clientUrl;
+
+    // ── Gain sliders → broadcast to devices ──────────────────────────────────
+    for (const part of VOICE_PARTS) {
+      const slider = document.getElementById(`slider-${part}`);
+      const valEl  = document.getElementById(`slider-val-${part}`);
+      slider.addEventListener('input', () => {
+        valEl.textContent = `${slider.value}%`;
+        socket.emit('host:set-part-gain', { part, gain: slider.value / 100 });
+      });
+    }
+
+    // ── Control buttons ───────────────────────────────────────────────────────
+    document.getElementById('btn-play').addEventListener('click', () => {
+      socket.emit('host:play');
+    });
+    document.getElementById('btn-stop').addEventListener('click', () => {
+      socket.emit('host:stop');
+    });
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      socket.emit('host:reset');
+    });
+
+    // ── UI state management ───────────────────────────────────────────────────
+    function setStatus(status, text) {
+      currentStatus = status;
+      const pill = document.getElementById('status-pill');
+      pill.textContent = text;
+      pill.className = `status-pill ${status}`;
+
+      const btnPlay  = document.getElementById('btn-play');
+      const btnStop  = document.getElementById('btn-stop');
+
+      btnPlay.disabled = (status === 'countdown' || status === 'playing');
+      btnStop.disabled = (status === 'idle' || status === 'stopped');
+    }
+
+    function showCountdown(playAt, countdownSec) {
+      clearInterval(countdownInterval);
+      const el = document.getElementById('countdown-big');
+      el.classList.add('visible');
+
+      const tick = () => {
+        const remaining = Math.ceil((playAt - Date.now()) / 1000);
+        if (remaining > 0) {
+          el.textContent = remaining;
+        } else {
+          clearInterval(countdownInterval);
+          el.classList.remove('visible');
+          el.textContent = '';
+        }
+      };
+      tick();
+      countdownInterval = setInterval(tick, 200);
+    }
+
+    // ── Device list rendering ─────────────────────────────────────────────────
+    function renderDevices(devices, gains) {
+      const tbody = document.getElementById('device-tbody');
+      document.getElementById('device-count').textContent = devices.length;
+      document.getElementById('total-count').textContent = devices.length;
+
+      // Part counts
+      for (const part of VOICE_PARTS) {
+        const count = devices.filter(d => d.part === part).length;
+        document.getElementById(`count-${part}`).textContent = count;
+      }
+
+      // Gain labels
+      if (gains) {
+        for (const part of VOICE_PARTS) {
+          const pct = Math.round((gains[part] || 0.8) * 100);
+          document.getElementById(`gain-${part}`).textContent = `auto vol ${pct}%`;
+        }
+      }
+
+      if (devices.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No devices connected yet.<br>Share the QR code to get started.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = devices.map(d => {
+        const partClass = `dot-${d.part.toLowerCase()}`;
+        const octaveText = d.octave === 1 ? '▲ +1' : d.octave === -1 ? '▼ -1' : '—';
+        return `
+          <tr>
+            <td>${d.label}</td>
+            <td>
+              <span class="${partClass}">●</span>
+              <select onchange="reassign('${d.socketId}', this.value)">
+                ${VOICE_PARTS.map(p => `<option value="${p}" ${p === d.part ? 'selected' : ''}>${p}</option>`).join('')}
+              </select>
+            </td>
+            <td style="color:var(--muted);font-size:12px">${octaveText}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    function reassign(socketId, part) {
+      socket.emit('host:assign-part', { socketId, part });
+    }
+
+    // ── Socket events ─────────────────────────────────────────────────────────
+    socket.on('host:connected', ({ devices, state, gains, sizeLabel }) => {
+      renderDevices(devices, gains);
+      document.getElementById('size-label').textContent = sizeLabel;
+      if (state.status !== 'idle') setStatus(state.status, state.status.charAt(0).toUpperCase() + state.status.slice(1));
+    });
+
+    socket.on('device:joined', ({ devices, gains, sizeLabel }) => {
+      renderDevices(devices, gains);
+      document.getElementById('size-label').textContent = sizeLabel;
+    });
+
+    socket.on('device:left', ({ devices, gains, sizeLabel }) => {
+      renderDevices(devices, gains);
+      document.getElementById('size-label').textContent = sizeLabel;
+    });
+
+    socket.on('perf:countdown', ({ playAt, countdownSec }) => {
+      setStatus('countdown', 'Countdown');
+      showCountdown(playAt, countdownSec);
+    });
+
+    socket.on('perf:play', () => {
+      setStatus('playing', '● Playing');
+    });
+
+    socket.on('perf:stop', () => {
+      clearInterval(countdownInterval);
+      document.getElementById('countdown-big').classList.remove('visible');
+      setStatus('stopped', 'Stopped');
+    });
+
+    socket.on('perf:reset', () => {
+      clearInterval(countdownInterval);
+      document.getElementById('countdown-big').classList.remove('visible');
+      setStatus('idle', 'Idle');
+    });
+  </script>
+</body>
+</html>

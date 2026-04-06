@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Choir</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --soprano: #e05c8a;
+      --alto:    #e07a3a;
+      --tenor:   #4a9de0;
+      --bass:    #5ab85a;
+      --bg:      #0d0d14;
+      --card:    #1a1a28;
+      --text:    #f0f0f8;
+      --muted:   #7070a0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    /* ── Join screen ── */
+    #join-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .music-icon {
+      font-size: 64px;
+      line-height: 1;
+    }
+
+    .join-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .join-subtitle {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 260px;
+    }
+
+    #join-btn {
+      margin-top: 8px;
+      background: #5a5aff;
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 18px 48px;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    #join-btn:active { transform: scale(0.96); opacity: 0.85; }
+
+    /* ── Main screen ── */
+    #main-screen { display: none; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 340px; }
+
+    .device-label { font-size: 13px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+    .part-badge {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      background: var(--soprano);
+      box-shadow: 0 0 0 0 rgba(255,255,255,0);
+      transition: background 0.4s;
+    }
+    .part-badge.playing {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
+      70%  { box-shadow: 0 0 0 28px rgba(255,255,255,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    }
+
+    .part-badge[data-part="Soprano"] { background: var(--soprano); }
+    .part-badge[data-part="Alto"]    { background: var(--alto); }
+    .part-badge[data-part="Tenor"]   { background: var(--tenor); }
+    .part-badge[data-part="Bass"]    { background: var(--bass); }
+
+    .octave-tag {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      margin-top: 4px;
+    }
+
+    .status-text {
+      font-size: 18px;
+      color: var(--muted);
+      min-height: 28px;
+    }
+
+    /* Countdown number */
+    #countdown-display {
+      font-size: 96px;
+      font-weight: 900;
+      letter-spacing: -4px;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #countdown-display.visible { opacity: 1; }
+
+    /* Waveform bars during playback */
+    #waveform {
+      display: none;
+      gap: 4px;
+      align-items: flex-end;
+      height: 40px;
+    }
+    #waveform.visible { display: flex; }
+    .bar {
+      width: 6px;
+      border-radius: 3px;
+      background: currentColor;
+      animation: wave 0.8s ease-in-out infinite;
+    }
+    .bar:nth-child(1) { height: 20px; animation-delay: 0s; }
+    .bar:nth-child(2) { height: 35px; animation-delay: 0.1s; }
+    .bar:nth-child(3) { height: 28px; animation-delay: 0.2s; }
+    .bar:nth-child(4) { height: 40px; animation-delay: 0.05s; }
+    .bar:nth-child(5) { height: 22px; animation-delay: 0.15s; }
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.4); }
+      50%       { transform: scaleY(1.0); }
+    }
+
+    .sync-info {
+      font-size: 11px;
+      color: var(--muted);
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Step 1: Require a tap to unlock AudioContext -->
+  <div id="join-screen">
+    <div class="music-icon">🎵</div>
+    <div class="join-title">Join the Choir</div>
+    <div class="join-subtitle">Tap below to join. You'll be assigned a voice part.</div>
+    <button id="join-btn">Join</button>
+  </div>
+
+  <!-- Step 2: Main experience -->
+  <div id="main-screen">
+    <div class="device-label" id="device-label">Connecting…</div>
+
+    <div class="part-badge" id="part-badge" data-part="">—</div>
+    <div class="octave-tag" id="octave-tag"></div>
+
+    <div id="countdown-display">5</div>
+
+    <div id="waveform">
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+    </div>
+
+    <div class="status-text" id="status-text">Waiting for conductor…</div>
+    <div class="sync-info" id="sync-info"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/song-data.js"></script>
+  <script src="/js/clock-sync.js"></script>
+  <script src="/js/audio-engine.js"></script>
+  <script>
+    const engine = new AudioEngine();
+    let offsetMs = 0;
+    let countdownInterval = null;
+
+    // ── UI helpers ────────────────────────────────────────────────────────────
+    const partBadge      = document.getElementById('part-badge');
+    const octaveTag      = document.getElementById('octave-tag');
+    const deviceLabel    = document.getElementById('device-label');
+    const statusText     = document.getElementById('status-text');
+    const countdownEl    = document.getElementById('countdown-display');
+    const waveform       = document.getElementById('waveform');
+    const syncInfo       = document.getElementById('sync-info');
+
+    const PART_COLORS = {
+      Soprano: '#e05c8a', Alto: '#e07a3a', Tenor: '#4a9de0', Bass: '#5ab85a',
+    };
+
+    function setPart(part) {
+      partBadge.textContent = part;
+      partBadge.setAttribute('data-part', part);
+    }
+
+    function setOctave(octave) {
+      if (octave === 1)       octaveTag.textContent = '▲ Octave up';
+      else if (octave === -1) octaveTag.textContent = '▼ Octave down';
+      else                    octaveTag.textContent = '';
+    }
+
+    function showCountdown(playAt, countdownSec) {
+      clearInterval(countdownInterval);
+      countdownEl.classList.add('visible');
+      waveform.classList.remove('visible');
+      partBadge.classList.remove('playing');
+
+      const tick = () => {
+        const remaining = Math.ceil((playAt - Date.now()) / 1000);
+        if (remaining > 0) {
+          countdownEl.textContent = remaining;
+          statusText.textContent = 'Get ready…';
+        } else {
+          clearInterval(countdownInterval);
+          countdownEl.classList.remove('visible');
+        }
+      };
+      tick();
+      countdownInterval = setInterval(tick, 200);
+    }
+
+    function showPlaying() {
+      clearInterval(countdownInterval);
+      countdownEl.classList.remove('visible');
+      waveform.classList.add('visible');
+      partBadge.classList.add('playing');
+      statusText.textContent = 'Singing…';
+    }
+
+    function showIdle(message = 'Waiting for conductor…') {
+      clearInterval(countdownInterval);
+      countdownEl.classList.remove('visible');
+      waveform.classList.remove('visible');
+      partBadge.classList.remove('playing');
+      statusText.textContent = message;
+    }
+
+    // ── Join button — unlocks AudioContext ────────────────────────────────────
+    document.getElementById('join-btn').addEventListener('click', async () => {
+      document.getElementById('join-screen').style.display = 'none';
+      document.getElementById('main-screen').style.display = 'flex';
+
+      await engine.init();
+
+      // Run clock sync quietly in the background
+      runClockSync().then(({ offsetMs: ms, rttMs }) => {
+        offsetMs = ms;
+        engine.setOffsetMs(ms);
+        syncInfo.textContent = `Sync: ±${Math.round(rttMs / 2)}ms`;
+      });
+
+      // Connect socket after AudioContext is ready
+      const socket = io({ query: { role: 'client' } });
+
+      socket.on('client:connected', ({ part, label, octave, gain, state }) => {
+        deviceLabel.textContent = label;
+        setPart(part);
+        setOctave(octave);
+        engine.setPart(part);
+        engine.setGain(gain);
+        engine.setOctave(octave);
+
+        // Late joiner — performance already in progress
+        if (state && state.status === 'playing' && state.playAt) {
+          engine.play(state.playAt);
+          showPlaying();
+        } else if (state && state.status === 'countdown' && state.playAt) {
+          showCountdown(state.playAt, state.countdownSec);
+          const delayMs = state.playAt - Date.now();
+          setTimeout(() => {
+            engine.play(state.playAt);
+            showPlaying();
+          }, Math.max(0, delayMs));
+        }
+      });
+
+      socket.on('perf:countdown', ({ playAt, countdownSec }) => {
+        engine.ensureRunning();
+        showCountdown(playAt, countdownSec);
+        const delayMs = playAt - Date.now();
+        setTimeout(() => {
+          engine.play(playAt);
+          showPlaying();
+        }, Math.max(0, delayMs - 100)); // schedule 100ms before to allow audio API prep
+      });
+
+      socket.on('perf:play', ({ playAt }) => {
+        // Redundant confirmation — only act if not already playing
+        if (!engine.playing) {
+          engine.play(playAt);
+          showPlaying();
+        }
+      });
+
+      socket.on('perf:stop', () => {
+        engine.stop();
+        showIdle('Performance stopped.');
+      });
+
+      socket.on('perf:reset', () => {
+        engine.stop();
+        showIdle('Waiting for conductor…');
+      });
+
+      socket.on('perf:part-changed', ({ part, octave, gain }) => {
+        const wasPlaying = engine.playing;
+        engine.stop();
+        setPart(part);
+        setOctave(octave);
+        engine.setPart(part);
+        engine.setGain(gain);
+        engine.setOctave(octave);
+        if (wasPlaying) statusText.textContent = 'Part changed — rejoin next performance';
+      });
+
+      socket.on('perf:gain-update', (gains) => {
+        const currentPart = partBadge.textContent;
+        if (gains[currentPart] !== undefined) {
+          engine.setGain(gains[currentPart]);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        showIdle('Reconnecting…');
+      });
+      socket.on('connect', () => {
+        if (partBadge.textContent && partBadge.textContent !== '—') {
+          showIdle('Waiting for conductor…');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
