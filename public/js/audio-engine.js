@@ -37,6 +37,19 @@ class AudioEngine {
     }
   }
 
+  // iOS silently suspends AudioContext after a few seconds of no activity.
+  // Scheduling a looping silent buffer node keeps the context alive.
+  keepAlive() {
+    if (!this.ctx) return;
+    const silentBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
+    const source = this.ctx.createBufferSource();
+    source.buffer = silentBuffer;
+    source.loop = true;
+    source.connect(this.ctx.destination);
+    source.start();
+    this._keepAliveNode = source; // held to prevent GC
+  }
+
   setPart(part) {
     this.part = part;
   }
