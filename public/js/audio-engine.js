@@ -56,10 +56,15 @@ class AudioEngine {
   }
 
   // playAtServerMs: absolute server timestamp (ms) when note 0 should sound
-  play(playAtServerMs) {
+  async play(playAtServerMs) {
     if (!this.ctx) {
       console.warn('[audio-engine] Not initialized — call init() first');
       return;
+    }
+    // Ensure the AudioContext is running before scheduling — browsers can
+    // suspend it when the tab is backgrounded or the screen locks.
+    if (this.ctx.state === 'suspended') {
+      await this.ctx.resume();
     }
     this.stop();
     this.playing = true;
