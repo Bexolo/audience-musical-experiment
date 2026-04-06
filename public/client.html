@@ -292,13 +292,19 @@
         // Late joiner — performance already in progress
         if (state && state.status === 'playing' && state.playAt) {
           engine.setSong(state.song);
-          engine.play(state.playAt).then(showPlaying);
+          await engine.ensureRunning();
+          engine.play(state.playAt);
+          showPlaying();
         } else if (state && state.status === 'countdown' && state.playAt) {
           engine.setSong(state.song);
           showCountdown(state.playAt, state.countdownSec);
           const delayMs = state.playAt - Date.now();
-          setTimeout(() => {
-            if (!engine.playing) engine.play(state.playAt).then(showPlaying);
+          setTimeout(async () => {
+            if (!engine.playing) {
+              await engine.ensureRunning();
+              engine.play(state.playAt);
+              showPlaying();
+            }
           }, Math.max(0, delayMs));
         }
       });
@@ -308,15 +314,21 @@
         await engine.ensureRunning();
         showCountdown(playAt, countdownSec);
         const delayMs = playAt - Date.now();
-        setTimeout(() => {
-          if (!engine.playing) engine.play(playAt).then(showPlaying);
+        setTimeout(async () => {
+          if (!engine.playing) {
+            await engine.ensureRunning();
+            engine.play(playAt);
+            showPlaying();
+          }
         }, Math.max(0, delayMs - 100));
       });
 
-      socket.on('perf:play', ({ playAt, song }) => {
+      socket.on('perf:play', async ({ playAt, song }) => {
         if (!engine.playing) {
           engine.setSong(song);
-          engine.play(playAt).then(showPlaying);
+          await engine.ensureRunning();
+          engine.play(playAt);
+          showPlaying();
         }
       });
 
