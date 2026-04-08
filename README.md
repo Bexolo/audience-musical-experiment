@@ -56,10 +56,21 @@ On startup the terminal will print:
 
 ### Tips
 
-- The more devices, the better — parts thicken up and the choir effect becomes more pronounced.
+- **Silent mode will kill the sound** — make sure every device is set to loud/ring mode before scanning. Phones on silent or vibrate will not make any noise.
 - Ask the audience to turn their volume up before scanning.
+- The more devices, the better — parts thicken up and the choir effect becomes more pronounced.
 - If a device joins late it will automatically catch up to the current performance state.
 - You can manually reassign a device to a different part from the host panel if needed.
+
+## Compatibility
+
+| Platform | Status |
+|----------|--------|
+| iOS (iPhone/iPad) | Tested and working |
+| Android | **Untested** — may work but behaviour is unverified |
+| Desktop browser | Works for the host page |
+
+Android users are welcome to try it and report back — contributions and compatibility fixes are very welcome.
 
 ## Features
 
@@ -103,4 +114,5 @@ This is an open experiment — if you have ideas for making it better, PRs and f
 - **Better audio synthesis** — richer waveforms, real instrument samples, or Web Audio API effects.
 - **Cloud deployment** — host the server remotely so any audience can join without a shared local network.
 - **More songs** — extend the song library with additional pieces or user-defined melodies.
+- **Android compatibility** — verify and fix any platform-specific audio issues on Android browsers.
 - **Visuals** — give the audience client a visual element that reacts to the music.
