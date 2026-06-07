@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "scheme": "hottubhero",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "backgroundColor": "#0a7ea4"
     },
