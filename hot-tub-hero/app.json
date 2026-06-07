@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Hot Tub Hero",
+    "slug": "hot-tub-hero",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "hottubhero",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0a7ea4"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hottubhero.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    },
+    "android": {
+      "package": "com.hottubhero.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0a7ea4"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#0a7ea4"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
